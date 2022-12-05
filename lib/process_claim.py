@@ -23,7 +23,7 @@ def process_claim(db, claim):
         claim_id = resp_json[0]
         print(f"Claim has already been processed. Claim ID is {claim_id}")
     else:
-        # Search the database for the right person in the employees table first
+        # Search the database for the right person described in the claim
         check_employees_query = f"""
             SELECT * FROM employees 
             WHERE ssn_suffix = '{claim['ssn_suffix']}'
@@ -31,46 +31,52 @@ def process_claim(db, claim):
             AND first_name = '{claim['first_name']}'
             AND date_of_birth = '{claim['date_of_birth']}'
             """
+        check_dependents_query = f"""
+        SELECT * FROM dependents 
+            WHERE ssn_suffix = '{claim['ssn_suffix']}'
+            AND last_name = '{claim['last_name']}'
+            AND first_name = '{claim['first_name']}'
+            AND date_of_birth = '{claim['date_of_birth']}'
+            """
         check_employees_result = execute_query(db, check_employees_query)
-
+        check_dependents_result = execute_query(db, check_dependents_query)
         # Ensure exactly one person is found
+        # It seems possible that a person can be both an employee and a dependent. 
+        # ASSUMPTION: It strikes me as reasonable that being a dependent would take precedence over being an employee for insurance claim purposes
+        # Is it possible for  a person to be both a dependent and a retiree? I've given precedence to dependent here as well
+        if len(check_dependents_result) == 1:
+            # found one dependent record that matches claim data
+            claim['claimant_type'] = 'dependent'
+            resp_json = json.dumps(check_dependents_result[0], default=str)
+            dependent_id = resp_json[0]
+            claim['claimant_id'] = dependent_id
         if len(check_employees_result) == 1:
             # found one employee record that matches claim data
             resp_json = json.dumps(check_employees_result[0], default=str)
             employee_id = resp_json[0]
-        elif len(check_employees_result) > 1:
-            print("More than one person found with details of: ", claim)
-            raise Exception
-        else:
-            print("No records found in employees table with details of: ", claim)
-            raise Exception
-
-        # claimant_type can be employee, dependent, or retiree. 
-        # Based on given data,it appears that no person could be in the dependents or retirees table 
-        # without also being in the employees table. If this is untrue, this code will need to be refactored
-        # Check if the person appears in dependents or retirees table to determine the claimant_type
-        check_dependents_query = f"""
-            SELECT * FROM dependents
-            WHERE dependent_id = '{employee_id}'
-        """
-        check_retirees_query = f"""
+            claim['claimant_id'] = employee_id
+            
+            # check to see if this person is a retiree to assign claimant_type
+            check_retirees_query = f"""
             SELECT * FROM retirees
             WHERE employee_id = '{employee_id}'
-        """
-        check_dependents_result=execute_query(db, check_dependents_query)
-        check_retirees_result=execute_query(db, check_retirees_query)
-
-        # Can a clamant be both a dependent and a retiree? If so, which should take precedence?
-        # I've written this to use dependent as precident over retiree.
-        if len(check_dependents_result) == 1:
-            # update claimant type to dependent
-            claim['claimant_type'] = 'dependent'
-        elif len(check_retirees_result) == 1:
-            # update claimant type to retiree
-            claim['claimant_type'] = 'retiree'
+            """
+            check_retirees_result=execute_query(db, check_retirees_query)
+            if len(check_retirees_result) == 1:
+                # update claimant type to retiree
+                claim['claimant_type'] = 'retiree'
+            else:
+                # update claimant type to employee
+                claim['claimant_type'] = 'employee'
+        elif len(check_employees_result) > 1:
+            print("More than one person found in employees table with details of: ", claim)
+            raise Exception
+        elif len(check_dependents_result) > 1:
+            print("More than one person found in dependents table with details of: ", claim)
+            raise Exception
         else:
-            # update claimant type to employee
-            claim['claimant_type'] = 'employee'
+            print("No records found in employees nor dependents table with details of: ", claim)
+            raise Exception
 
         # Generate unique UUID for the claim ID
         
