@@ -14,8 +14,8 @@ def process_claim(db, claim):
         AND e.last_name = '{claim['last_name']}'
         AND e.first_name = '{claim['first_name']}'
         AND e.date_of_birth = '{claim['date_of_birth']}' 
-        AND c.claim_date = {claim['claim_date']}' 
-        AND c.claim_amount = {claim['claim_amount']}' 
+        AND c.claim_date = '{claim['claim_date']}' 
+        AND c.claim_amount = '{claim['claim_amount']}' 
     """
     check_claims_result = execute_query(db, check_claims_query)
     if len(check_claims_result) == 1:
