@@ -2,7 +2,7 @@ from datetime import date
 import json
 import uuid
 
-def process_claim(db, claim):
+def process_claim(db, claim:json):
     print("Claim: ", claim)
     # check if the claim has already been processed - no point in doing it twice!
     # One pitfall of this approach is that it is conceivable that a person could have two claims for the same amount on the same day.
@@ -24,20 +24,8 @@ def process_claim(db, claim):
         print(f"Claim has already been processed. Claim ID is {claim_id}")
     else:
         # Search the database for the right person described in the claim
-        check_employees_query = f"""
-            SELECT * FROM employees 
-            WHERE ssn_suffix = '{claim['ssn_suffix']}'
-            AND last_name = '{claim['last_name']}'
-            AND first_name = '{claim['first_name']}'
-            AND date_of_birth = '{claim['date_of_birth']}'
-            """
-        check_dependents_query = f"""
-        SELECT * FROM dependents 
-            WHERE ssn_suffix = '{claim['ssn_suffix']}'
-            AND last_name = '{claim['last_name']}'
-            AND first_name = '{claim['first_name']}'
-            AND date_of_birth = '{claim['date_of_birth']}'
-            """
+        check_employees_query = create_select_query('employees', claim)
+        check_dependents_query = create_select_query('dependents', claim)
         check_employees_result = execute_query(db, check_employees_query)
         check_dependents_result = execute_query(db, check_dependents_query)
         # Ensure exactly one person is found
@@ -121,3 +109,14 @@ def execute_query(db, query:str):
         raise
     
     return result
+
+def create_select_query(table:str, claim:json):
+    statement = f"""
+            SELECT * FROM {table} 
+            WHERE ssn_suffix = '{claim['ssn_suffix']}'
+            AND last_name = '{claim['last_name']}'
+            AND first_name = '{claim['first_name']}'
+            AND date_of_birth = '{claim['date_of_birth']}'
+            """
+    return statement
+
