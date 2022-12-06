@@ -1,6 +1,6 @@
 from datetime import date
 import json
-
+import uuid
 
 def process_claim(db, claim):
     print("Claim: ", claim)
@@ -55,7 +55,7 @@ def process_claim(db, claim):
             resp_list = list(check_employees_result[0])
             employee_id = resp_list[0]
             claim['claimant_id'] = employee_id
-            
+
             # check to see if this person is a retiree to assign claimant_type
             check_retirees_query = f"""
             SELECT * FROM retirees
@@ -79,11 +79,32 @@ def process_claim(db, claim):
             raise Exception
 
         # Generate unique UUID for the claim ID
-        
+        claim['claim_id'] = str(uuid.uuid4())
+        # ASSUMPTION: the claims table has a non-nullable field named "status". 
+        # I will set it to valid because I have no reason to believe the incoming claims are invalid
+        claim['claim_status'] = 'valid'
+
         # Write to database
+        mycursor = db.cursor()
 
-
-    pass
+        sql = """
+            INSERT INTO claims 
+            (claim_id, claimant_id, claimant_type, claim_date, claim_amount, claim_status) 
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """
+        val = (
+                claim['claim_id'], 
+                claim['claimant_id'], 
+                claim['claimant_type'], 
+                claim['claim_date'], 
+                claim['claim_amount'], 
+                claim['claim_status']
+                )
+        mycursor.execute(sql, val)
+        db.commit()
+        print(mycursor.rowcount, "record inserted.")
+        result = mycursor.fetchall()
+        return result
 
 
 def execute_query(db, query:str):
