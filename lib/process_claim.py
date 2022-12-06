@@ -47,13 +47,13 @@ def process_claim(db, claim):
         if len(check_dependents_result) == 1:
             # found one dependent record that matches claim data
             claim['claimant_type'] = 'dependent'
-            resp_json = json.dumps(check_dependents_result[0], default=str)
-            dependent_id = resp_json[0]
+            resp_list = list(check_dependents_result[0])
+            dependent_id = resp_list[0]
             claim['claimant_id'] = dependent_id
         if len(check_employees_result) == 1:
             # found one employee record that matches claim data
-            resp_json = json.dumps(check_employees_result[0], default=str)
-            employee_id = resp_json[0]
+            resp_list = list(check_employees_result[0])
+            employee_id = resp_list[0]
             claim['claimant_id'] = employee_id
             
             # check to see if this person is a retiree to assign claimant_type
