@@ -19,9 +19,10 @@ def process_claim(db, claim:json):
     """
     check_claims_result = execute_query(db, check_claims_query)
     if len(check_claims_result) == 1:
-        resp_json = json.dumps(check_claims_result[0], default=str)
-        claim_id = resp_json[0]
+        resp_list = list(check_claims_result[0])
+        claim_id = resp_list[0]
         print(f"Claim has already been processed. Claim ID is {claim_id}")
+        return check_claims_result
     else:
         # Search the database for the right person described in the claim
         check_employees_query = create_select_query('employees', claim)
